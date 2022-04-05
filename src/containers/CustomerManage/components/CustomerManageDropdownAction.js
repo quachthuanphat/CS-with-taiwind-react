@@ -1,21 +1,23 @@
 import React from 'react';
 import CustomerManageModalConfirm from './CustomerManageModalConfirm';
 import { Menu, Dropdown, Button } from 'antd';
-const CustomerManageDropdownAction = ({ selectedCustomer, handleConfirmDeleteCustomer }) => {
-
-
+const CustomerManageDropdownAction = ({ selectedCustomer, handleConfirmDeleteCustomer, controlModalExport }) => {
     const handleDeleteCustomer = () => {
         return CustomerManageModalConfirm({
             title: 'Do you want to remove these items?',
             onOk: handleConfirmDeleteCustomer,
             onCancel: () => {}
-        })
-    }
+        });
+    };
 
     const renderOverlay = () => (
         <Menu>
-            <Menu.Item>Export</Menu.Item>
-            <Menu.Item onClick={handleDeleteCustomer} disabled={!selectedCustomer?.length}>Delete Customer</Menu.Item>
+            <Menu.Item onClick={() => controlModalExport(true)} disabled={!selectedCustomer?.length}>
+                Export
+            </Menu.Item>
+            <Menu.Item onClick={handleDeleteCustomer} disabled={!selectedCustomer?.length}>
+                Delete Customer
+            </Menu.Item>
         </Menu>
     );
 

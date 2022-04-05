@@ -2,9 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Button, Table, Input } from 'antd';
 import CustomerManageModal from './components/CustomerManageModal';
 import CustomerManageDropdownAction from './components/CustomerManageDropdownAction';
+import CustomerManageModaExportData from './components/CustomerManageModaExportData';
+
+import * as FileSaver from 'file-saver';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 import { fakeCustomerData, customerTableColumns, createCustomerFields } from './staticData';
-import { uid, customerHelper } from '../../common';
+import { uid, customerHelper, renderHeadingXLSXFile, renderWorkSheetColWidth, capitalizeFirstLetter } from '../../common';
 
 const CustomerManage = () => {
     const [customerSearch, setCustomerSearch] = useState([]);
@@ -12,7 +18,9 @@ const CustomerManage = () => {
     const [openModalCreate, setOpenModalCreate] = useState(false);
     const [searchKeyWord, setSearchKeyword] = useState('');
     const [customerEditData, setCustomerEditData] = useState('');
-    const [selectedCustomer, setSelectedCustomer] = useState([])
+    const [selectedCustomer, setSelectedCustomer] = useState([]);
+    const [selectedCustomerKeys, setSelectedCustomerKeys] = useState([]);
+    const [openModalExport, setOpenModalExport] = useState(false);
 
     const getInitialData = async () => {
         setCustomerData(
@@ -28,7 +36,7 @@ const CustomerManage = () => {
     const handleCreateCustomer = (registerData) => {
         setCustomerData(customerHelper['insert']([...customerData], registerData));
         if (searchKeyWord && customerSearch.length) {
-            setCustomerSearch(customerHelper['insert']([...customerSearch], registerData))
+            setCustomerSearch(customerHelper['insert']([...customerSearch], registerData));
         }
         controlModalCreate(false);
     };
@@ -62,22 +70,67 @@ const CustomerManage = () => {
         controlModalCreate(true);
     };
 
-    const handleSelectCheckboxTableRow = (selectedRows) => {
-        setSelectedCustomer(selectedRows)
+    const handleSelectCheckboxTableRow = (selectedRows, rowData) => {
+        setSelectedCustomerKeys(selectedRows);
+        setSelectedCustomer(rowData);
     };
 
     const renderTotal = () => {
         if (searchKeyWord) return customerSearch.length;
         return customerData.length;
-    }
+    };
 
     const handleConfirmDeleteCustomer = () => {
-        setCustomerData(customerHelper['delete']([...customerData], selectedCustomer))
+        setCustomerData(customerHelper['delete']([...customerData], selectedCustomerKeys));
         if (searchKeyWord && customerSearch.length) {
-            setCustomerSearch(customerHelper['delete']([...customerSearch], selectedCustomer));
+            setCustomerSearch(customerHelper['delete']([...customerSearch], selectedCustomerKeys));
         }
-        setSelectedCustomer([])
-    }
+        setSelectedCustomer([]);
+    };
+
+    const controlModalExport = (visible) => setOpenModalExport(visible);
+
+    const handleExportCustomerData = (exportType, exportColumn) => {
+        if (exportType === 'xlsx') {
+            const fileType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+            const fileExtension = '.xlsx';
+            const exportData = customerHelper['process-before-export-xlsx']([...selectedCustomer], exportColumn);
+            const workSheet = XLSX.utils.json_to_sheet(renderHeadingXLSXFile(exportColumn), {
+                header: exportColumn,
+                skipHeader: true,
+                origin: 0
+            });
+            workSheet['!cols'] = renderWorkSheetColWidth(exportData, exportColumn);
+            XLSX.utils.sheet_add_json(workSheet, exportData, {
+                header: exportColumn,
+                skipHeader: true,
+                origin: -1
+            });
+            const workBook = { Sheets: { data: workSheet }, SheetNames: ['data'] };
+            const excelBuffer = XLSX.write(workBook, { bookType: 'xlsx', type: 'array' });
+            const finalData = new Blob([excelBuffer], { type: fileType });
+            FileSaver.saveAs(finalData, 'customer_data' + fileExtension);
+            return;
+        }
+        const pageUnit = 'pt';
+        const pageSize = 'A4'; // Use A1, A2, A3 or A4
+        const pageOrientation = 'portrait'; // portrait or landscape
+        const marginLeft = 40;
+        const PDFDoc = new jsPDF(pageOrientation, pageUnit, pageSize);
+        const PDFDocTitle = 'Customer Data';
+        const PDFDocHeader = [exportColumn.map((column) => capitalizeFirstLetter(column))];
+        const PDFDocDataExport = customerHelper['process-before-export-pdf']([...selectedCustomer], exportColumn);
+
+        let content = {
+            startY: 50,
+            head: PDFDocHeader,
+            body: PDFDocDataExport
+        };
+        PDFDoc.setFontSize(15);
+        PDFDoc.text(PDFDocTitle, marginLeft, 40);
+        PDFDoc.autoTable(content);
+        PDFDoc.save('report.pdf');
+    };
 
     useEffect(() => {
         getInitialData();
@@ -96,9 +149,15 @@ const CustomerManage = () => {
                     </Button>
                 </div>
                 <div className="flex justify-between mt-6">
-                    <div className='w-2/4 flex items-center'>
-                        <div className='mr-4'>Total <span className='font-bold'>{renderTotal()}</span> Customer</div>
-                        <CustomerManageDropdownAction selectedCustomer={selectedCustomer} handleConfirmDeleteCustomer={handleConfirmDeleteCustomer} />
+                    <div className="w-2/4 flex items-center">
+                        <div className="mr-4">
+                            Total <span className="font-bold">{renderTotal()}</span> Customer
+                        </div>
+                        <CustomerManageDropdownAction
+                            selectedCustomer={selectedCustomerKeys}
+                            handleConfirmDeleteCustomer={handleConfirmDeleteCustomer}
+                            controlModalExport={controlModalExport}
+                        />
                     </div>
                     <div className="w-1/4">
                         <Input.Search
@@ -113,8 +172,7 @@ const CustomerManage = () => {
                     <Table
                         rowSelection={{
                             type: 'checkbox',
-                            onChange: (rowKeyArr) =>
-                                handleSelectCheckboxTableRow(rowKeyArr)
+                            onChange: (rowKeyArr, rowData) => handleSelectCheckboxTableRow(rowKeyArr, rowData)
                         }}
                         onRow={(record) => {
                             return {
@@ -132,6 +190,11 @@ const CustomerManage = () => {
                 handleEditCustomer={handleEditCustomer}
                 handleCloseModal={() => controlModalCreate(false)}
                 customerEditData={customerEditData}
+            />
+            <CustomerManageModaExportData
+                visible={openModalExport}
+                handleCloseModal={() => controlModalExport(false)}
+                handleExportCustomerData={handleExportCustomerData}
             />
         </div>
     );
