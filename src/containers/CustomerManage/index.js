@@ -3,6 +3,7 @@ import { Button, Table, Input } from 'antd';
 import CustomerManageModal from './components/CustomerManageModal';
 import CustomerManageDropdownAction from './components/CustomerManageDropdownAction';
 import CustomerManageModaExportData from './components/CustomerManageModaExportData';
+import CustomerManageChart from './components/CustomerManageChart';
 
 import * as FileSaver from 'file-saver';
 import * as XLSX from 'xlsx';
@@ -10,7 +11,14 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 import { fakeCustomerData, customerTableColumns, createCustomerFields } from './staticData';
-import { uid, customerHelper, renderHeadingXLSXFile, renderWorkSheetColWidth, capitalizeFirstLetter } from '../../common';
+import {
+    uid,
+    customerHelper,
+    renderHeadingXLSXFile,
+    renderWorkSheetColWidth,
+    capitalizeFirstLetter,
+    cloneDeep
+} from '../../common';
 
 const CustomerManage = () => {
     const [customerSearch, setCustomerSearch] = useState([]);
@@ -21,6 +29,7 @@ const CustomerManage = () => {
     const [selectedCustomer, setSelectedCustomer] = useState([]);
     const [selectedCustomerKeys, setSelectedCustomerKeys] = useState([]);
     const [openModalExport, setOpenModalExport] = useState(false);
+    const [openCustomerAnalysis, setOpenCustomerAnalysis] = useState(false);
 
     const getInitialData = async () => {
         setCustomerData(
@@ -94,7 +103,7 @@ const CustomerManage = () => {
         if (exportType === 'xlsx') {
             const fileType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
             const fileExtension = '.xlsx';
-            const exportData = customerHelper['process-before-export-xlsx']([...selectedCustomer], exportColumn);
+            const exportData = customerHelper['process-before-export-xlsx'](cloneDeep(selectedCustomer), exportColumn);
             const workSheet = XLSX.utils.json_to_sheet(renderHeadingXLSXFile(exportColumn), {
                 header: exportColumn,
                 skipHeader: true,
@@ -113,13 +122,13 @@ const CustomerManage = () => {
             return;
         }
         const pageUnit = 'pt';
-        const pageSize = 'A4'; // Use A1, A2, A3 or A4
+        const pageSize = 'A3'; // Use A1, A2, A3 or A4
         const pageOrientation = 'portrait'; // portrait or landscape
         const marginLeft = 40;
         const PDFDoc = new jsPDF(pageOrientation, pageUnit, pageSize);
         const PDFDocTitle = 'Customer Data';
         const PDFDocHeader = [exportColumn.map((column) => capitalizeFirstLetter(column))];
-        const PDFDocDataExport = customerHelper['process-before-export-pdf']([...selectedCustomer], exportColumn);
+        const PDFDocDataExport = customerHelper['process-before-export-pdf'](cloneDeep(selectedCustomer), exportColumn);
 
         let content = {
             startY: 50,
@@ -138,14 +147,18 @@ const CustomerManage = () => {
 
     return (
         <div className="customer-manage-page">
-            <div className="customer-manage-page__header bg-white px-3.5 w-full h-16 flex items-center">
-                <div className="text-black font-bold text-2xl">Testing</div>
+            <div className="customer-manage-page__header bg-white px-3.5 w-full h-16 flex items-center justify-between">
+                <div className="text-black font-bold text-2xl">Quách Thuận Phát</div>
+                <div className="text-black font-bold text-2xl">VNG TEST</div>
             </div>
             <div className="customer-manage-page__body p-11">
                 <div className="flex items-center">
                     <div className="text-2xl font-bold mr-3">Customer List</div>
                     <Button type="primary" onClick={() => controlModalCreate(true)}>
                         Add New
+                    </Button>
+                    <Button className='ml-3' type="default" onClick={() => setOpenCustomerAnalysis(true)}>
+                        See customer analysis
                     </Button>
                 </div>
                 <div className="flex justify-between mt-6">
@@ -167,7 +180,6 @@ const CustomerManage = () => {
                         />
                     </div>
                 </div>
-
                 <div className="mt-6">
                     <Table
                         rowSelection={{
@@ -196,6 +208,7 @@ const CustomerManage = () => {
                 handleCloseModal={() => controlModalExport(false)}
                 handleExportCustomerData={handleExportCustomerData}
             />
+            <CustomerManageChart onClose={() => setOpenCustomerAnalysis(false)} visible={openCustomerAnalysis} customerData={searchKeyWord ? customerSearch : customerData} />
         </div>
     );
 };

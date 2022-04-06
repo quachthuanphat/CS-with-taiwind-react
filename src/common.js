@@ -76,3 +76,8 @@ export const renderWorkSheetColWidth = (exportData, exportColumn) => {
     });
     return workSheetCol;
 };
+
+export const cloneDeep = (cloneData) => {
+    const cloneDataStringtify = JSON.stringify(cloneData);
+    return JSON.parse(cloneDataStringtify)
+}

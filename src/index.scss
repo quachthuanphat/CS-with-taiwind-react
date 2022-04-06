@@ -30,3 +30,10 @@ body {
         cursor: pointer;
     }
 }
+
+.ant-dropdown-menu-item.disabled {
+    background: #80808033;
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 50%;
+}

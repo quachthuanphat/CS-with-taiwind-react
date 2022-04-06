@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Modal, Button, Radio, Select } from 'antd';
 import { createCustomerFields } from '../staticData';
+import { uid } from '../../../common';
 
 const CustomerManageModaExportData = ({ visible, handleCloseModal, handleExportCustomerData }) => {
     const [exportRow, setExportRow] = useState([]);
     const [exportType, setExportType] = useState('xlsx');
 
     const handleDestroyModal = () => {
-        console.log('handleDestroyModal', handleDestroyModal);
         setExportRow([]);
         setExportType('xlsx');
     };
@@ -18,10 +18,11 @@ const CustomerManageModaExportData = ({ visible, handleCloseModal, handleExportC
             afterClose={handleDestroyModal}
             onCancel={handleCloseModal}
             footer={[
-                <Button type="text" onClick={handleCloseModal}>
+                <Button key={uid()} type="text" onClick={handleCloseModal}>
                     Cancel
                 </Button>,
                 <Button
+                    key={uid()}
                     type="primary"
                     onClick={() => handleExportCustomerData(exportType, exportRow.length ? exportRow : [...createCustomerFields])}
                 >
